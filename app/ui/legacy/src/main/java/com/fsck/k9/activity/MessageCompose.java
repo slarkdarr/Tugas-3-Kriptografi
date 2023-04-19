@@ -761,7 +761,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         if (this.encryptionFlag && !encryptionKey.isBlank() && !encryptionKey.isEmpty()) {
             OkHttpClient okHttpClient = new OkHttpClient();
 
-            String url = "https://c861-111-94-208-173.ap.ngrok.io/encrypt";
+            String url = "https://0079-111-94-208-173.ngrok-free.app/encrypt";
             String body = "{ \"key\": \"" + encryptionKey + "\", \"body\": \""+ msg + "\" }";
 
             Request request = new Request.Builder()
