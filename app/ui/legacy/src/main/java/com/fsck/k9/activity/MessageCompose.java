@@ -752,6 +752,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         if (this.encryptionFlag && !encryptionKey.isBlank() && !encryptionKey.isEmpty()) {
             // TODO encryption
         }
+        msg = CrLfConverter.toCrLf(msg);
 
         builder.setSubject(Utility.stripNewLines(subjectView.getText().toString()))
                 .setSentDate(new Date())
