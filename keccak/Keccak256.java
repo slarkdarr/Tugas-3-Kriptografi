@@ -1,6 +1,10 @@
 import java.math.BigInteger;
 import java.util.Arrays;
 
+/**
+ * This class implements Keccak-256 hash function based on specifications provided at
+ * https://keccak.team/keccak_specs_summary.html
+ */
 public class Keccak256 {
 
     private static final int R = 1088;
