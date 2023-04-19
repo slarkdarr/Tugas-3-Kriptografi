@@ -2,6 +2,7 @@ package com.fsck.k9.activity;
 
 
 import java.io.File;
+import java.math.BigInteger;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -25,10 +26,6 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
-import androidx.annotation.Nullable;
-import androidx.annotation.StringRes;
-import androidx.appcompat.app.ActionBar;
-
 import android.text.InputType;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -48,6 +45,9 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
+import androidx.appcompat.app.ActionBar;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.fsck.k9.Account;
@@ -90,6 +90,8 @@ import com.fsck.k9.helper.MailTo;
 import com.fsck.k9.helper.ReplyToParser;
 import com.fsck.k9.helper.SimpleTextWatcher;
 import com.fsck.k9.helper.Utility;
+import com.fsck.k9.lib.ECDSA;
+import com.fsck.k9.lib.Signature;
 import com.fsck.k9.mail.Flag;
 import com.fsck.k9.mail.Message;
 import com.fsck.k9.mail.Message.RecipientType;
@@ -118,7 +120,10 @@ import com.fsck.k9.ui.messagelist.DefaultFolderProvider;
 import com.fsck.k9.ui.permissions.K9PermissionUiHelper;
 import com.fsck.k9.ui.permissions.Permission;
 import com.fsck.k9.ui.permissions.PermissionUiHelper;
-
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 import org.jetbrains.annotations.NotNull;
 import org.openintents.openpgp.OpenPgpApiManager;
 import org.openintents.openpgp.util.OpenPgpApi;
@@ -746,12 +751,34 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         }
         String msg = CrLfConverter.toCrLf(messageContentView.getText());
         if (this.digitalSignFlag && !digitalSignKey.isBlank() && !digitalSignKey.isEmpty()) {
-            // TODO Digital Sign
+            Signature signature = ECDSA.sign(msg.getBytes(), new BigInteger(digitalSignKey));
+            String R = (new BigInteger(String.valueOf(signature.getR()), 16)).toString();
+            String S = (new BigInteger(String.valueOf(signature.getS()), 16)).toString();
+
+            msg += "\n\n<ds>" + R + S + "</ds>";
         }
 
         if (this.encryptionFlag && !encryptionKey.isBlank() && !encryptionKey.isEmpty()) {
-            // TODO encryption
+            OkHttpClient okHttpClient = new OkHttpClient();
+
+            String url = "https://c861-111-94-208-173.ap.ngrok.io/encrypt";
+            String body = "{ \"key\": \"" + encryptionKey + "\", \"body\": \""+ msg + "\" }";
+
+            Request request = new Request.Builder()
+                .url(url)
+                .post(RequestBody.create(body.getBytes()))
+                .build();
+
+            try {
+                Response response = okHttpClient.newCall(request).execute();
+                if (response.body() != null) {
+                    msg = response.body().string();
+                }
+            } catch (Exception e) {
+                Timber.e(e);
+            }
         }
+
         msg = CrLfConverter.toCrLf(msg);
 
         builder.setSubject(Utility.stripNewLines(subjectView.getText().toString()))
