@@ -11,6 +11,7 @@ public class Keccak256 {
     private static final int C = 1600 - R;
     private static final int BLOCK_SIZE = C / 8;
     private static final int OUTPUT_SIZE = 32;
+
     private static final long[] ROUND_CONSTANTS = {
             0x0000000000000001L, 0x0000000000008082L, 0x800000000000808aL, 0x8000000080008000L,
             0x000000000000808bL, 0x0000000080000001L, 0x8000000080008081L, 0x8000000000008009L,
