@@ -503,7 +503,7 @@ class MessageViewFragment :
         val matches = contentMatcher.find(messageWebView.currentHtmlContent)
         if (matches == null) {
             AlertDialog.Builder(this.requireView().context).setTitle("Digital Signature").
-            setMessage("Digital Signature NOT Verified.").
+            setMessage("Digital Signature NOT found. (1)").
             setPositiveButton("Proceed Carefully", DialogInterface.OnClickListener { _, _ ->  }).create().show()
             return
         }
@@ -514,7 +514,7 @@ class MessageViewFragment :
         val signaturematches = signatureMatcher.find(message)
         if (signaturematches == null) {
             AlertDialog.Builder(this.requireView().context).setTitle("Digital Signature").
-            setMessage("Digital Signature NOT Verified.").
+            setMessage("Digital Signature NOT found. (2)").
             setPositiveButton("Proceed Carefully", DialogInterface.OnClickListener { _, _ ->  }).create().show()
             return
         }
