@@ -79,6 +79,7 @@ import com.fsck.k9.controller.MessageReference;
 import com.fsck.k9.controller.MessagingController;
 import com.fsck.k9.controller.MessagingListener;
 import com.fsck.k9.controller.SimpleMessagingListener;
+import com.fsck.k9.entity.Encrypt;
 import com.fsck.k9.fragment.AttachmentDownloadDialogFragment;
 import com.fsck.k9.fragment.AttachmentDownloadDialogFragment.AttachmentDownloadCancelListener;
 import com.fsck.k9.fragment.ProgressDialogFragment;
@@ -120,6 +121,7 @@ import com.fsck.k9.ui.messagelist.DefaultFolderProvider;
 import com.fsck.k9.ui.permissions.K9PermissionUiHelper;
 import com.fsck.k9.ui.permissions.Permission;
 import com.fsck.k9.ui.permissions.PermissionUiHelper;
+import com.google.gson.Gson;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -752,21 +754,22 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         String msg = CrLfConverter.toCrLf(messageContentView.getText());
         if (this.digitalSignFlag && !digitalSignKey.isBlank() && !digitalSignKey.isEmpty()) {
             Signature signature = ECDSA.sign(msg.getBytes(), new BigInteger(digitalSignKey));
-            String R = (new BigInteger(String.valueOf(signature.getR()), 16)).toString();
-            String S = (new BigInteger(String.valueOf(signature.getS()), 16)).toString();
+            String R = signature.getR().toString();
+            String S = signature.getS().toString();
 
-            msg += "\n\n<ds>" + R + S + "</ds>";
+            msg += "\n\n<ds>\n" + R + "\n" + S + "\n</ds>";
         }
 
         if (this.encryptionFlag && !encryptionKey.isBlank() && !encryptionKey.isEmpty()) {
             OkHttpClient okHttpClient = new OkHttpClient();
 
             String url = "https://0079-111-94-208-173.ngrok-free.app/encrypt";
-            String body = "{ \"key\": \"" + encryptionKey + "\", \"body\": \""+ msg + "\" }";
+            Encrypt encrypt = new Encrypt(encryptionKey, msg);
+            Gson gson = new Gson();
 
             Request request = new Request.Builder()
                 .url(url)
-                .post(RequestBody.create(body.getBytes()))
+                .post(RequestBody.create(gson.toJson(encrypt).getBytes()))
                 .build();
 
             try {

@@ -33,12 +33,16 @@ import com.fsck.k9.activity.MessageLoaderHelper.MessageLoaderCallbacks
 import com.fsck.k9.activity.MessageLoaderHelperFactory
 import com.fsck.k9.controller.MessageReference
 import com.fsck.k9.controller.MessagingController
+import com.fsck.k9.entity.Decrypt
+import com.fsck.k9.entity.Encrypt
 import com.fsck.k9.fragment.AttachmentDownloadDialogFragment
 import com.fsck.k9.fragment.ConfirmationDialogFragment
 import com.fsck.k9.fragment.ConfirmationDialogFragment.ConfirmationDialogFragmentListener
 import com.fsck.k9.helper.HttpsUnsubscribeUri
 import com.fsck.k9.helper.MailtoUnsubscribeUri
 import com.fsck.k9.helper.UnsubscribeUri
+import com.fsck.k9.lib.ECDSA
+import com.fsck.k9.lib.Signature
 import com.fsck.k9.mail.Flag
 import com.fsck.k9.mailstore.AttachmentViewInfo
 import com.fsck.k9.mailstore.LocalMessage
@@ -56,10 +60,14 @@ import com.fsck.k9.ui.settings.account.AccountSettingsActivity
 import com.fsck.k9.ui.share.ShareIntentBuilder
 import com.fsck.k9.ui.withArguments
 import com.fsck.k9.view.MessageWebView
-import java.io.ByteArrayOutputStream
-import java.io.OutputStream
+import com.google.gson.Gson
+import java.math.BigInteger
 import java.util.Locale
-import java.util.regex.Pattern
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
+import okhttp3.Response
 import org.koin.android.ext.android.inject
 import timber.log.Timber
 
@@ -511,21 +519,29 @@ class MessageViewFragment :
         val originalMessage = matches!!.groupValues[1]
         val message = Html.fromHtml(originalMessage).toString()
 
-        val signaturePattern = Pattern.compile("<ds>(.*)</ds>")
-        val signatureMatcher = signaturePattern.matcher(message)
-        if (!signatureMatcher.find()) {
+        val signatureMatcher = Regex("<ds>(.*)</ds>", RegexOption.DOT_MATCHES_ALL)
+        val signature = signatureMatcher.find(message)?.groupValues?.get(1)
+        if (signature == null) {
             AlertDialog.Builder(this.requireView().context).setTitle("Digital Signature").
             setMessage("Digital Signature NOT found. (2)").
             setPositiveButton("Proceed Carefully", DialogInterface.OnClickListener { _, _ ->  }).create().show()
             return
         }
-        val signature = signatureMatcher.group(1)!!.trim()
 
-        val rawmessage = signature.replace("\n\n<ds>$signature</ds>","")
+        val rawmessage = message.replace("\n\n<ds>$signature</ds>","")
         messageWebView.setHtmlContent(rawmessage)
 
-        val valid = false;
-        // TODO validasi signature
+        val arr = signature.trim().split("\n")
+        val r = arr[0]
+        val s = arr[1]
+
+        val sig = Signature(BigInteger(r), BigInteger(s))
+
+        val Qx = "8469354081294532245811835113507092868005596729073990617989895057033098680773"
+        val Qy = "52665377184757412705526978770480756426342473646051945554384361187562572582942"
+
+        val valid = ECDSA.verify(rawmessage.encodeToByteArray(), BigInteger(Qx), BigInteger(Qy), sig);
+
         if (valid) {
             AlertDialog.Builder(this.requireView().context).setTitle("Digital Signature").
             setMessage("Digital Signature Verified.").
@@ -535,8 +551,6 @@ class MessageViewFragment :
             setMessage("Digital Signature NOT Verified.").
             setPositiveButton("Proceed Carefully", DialogInterface.OnClickListener { _, _ ->  }).create().show()
         }
-        Timber.tag("RAVIEL").i(rawmessage)
-        Timber.tag("RAVIEL").i(signature)
     }
 
     fun onDecrypt() {
@@ -544,9 +558,33 @@ class MessageViewFragment :
         val contentMatcher = Regex("<body><div dir=\"auto\">(.*)</div></body>", RegexOption.MULTILINE)
         val matches = contentMatcher.find(messageWebView.currentHtmlContent) ?: return
         val originalMessage = matches!!.groupValues[1]
-        var originalmessage = Html.fromHtml(originalMessage).toString()
-        var newmessage = "addddddddddd"
-        // TODO decrypt message
+        val originalmessage = Html.fromHtml(originalMessage).toString()
+        var newmessage = ""
+
+        val key = "t6w9z\$C&F)H@McQf"
+
+        val url = "https://0079-111-94-208-173.ngrok-free.app/decrypt"
+        val decrypt = Decrypt(key, originalmessage)
+        val gson = Gson()
+
+        val request = Request.Builder()
+            .url(url)
+            .post(RequestBody.create("application/json".toMediaTypeOrNull(), gson.toJson(decrypt)))
+            .build()
+
+        val okHttpClient = OkHttpClient()
+
+        try {
+            val response: Response = okHttpClient.newCall(request).execute()
+            if (response.body != null) {
+                newmessage = response.body!!.string()
+                Timber.tag("CHRIS").i(newmessage)
+            }
+        } catch (e: Exception) {
+            Timber.e(e)
+        }
+
+        Timber.tag("CHRIS").i(originalmessage)
         val finalmessage = messageWebView.currentHtmlContent.replace(originalmessage, newmessage)
         messageWebView.setHtmlContent(finalmessage)
     }

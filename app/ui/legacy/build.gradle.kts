@@ -12,6 +12,7 @@ dependencies {
     implementation(projects.mail.common)
     implementation(projects.uiUtils.toolbarBottomSheet)
     implementation(libs.okhttp)
+    implementation("com.google.code.gson:gson:2.8.9")
 
     // Remove AccountSetupIncoming's dependency on these
     compileOnly(projects.mail.protocols.imap)
