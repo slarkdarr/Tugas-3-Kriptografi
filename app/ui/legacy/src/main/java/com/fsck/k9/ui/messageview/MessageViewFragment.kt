@@ -510,8 +510,14 @@ class MessageViewFragment :
         val originalMessage = matches!!.groupValues[1]
         val message = Html.fromHtml(originalMessage).toString()
 
-        val signatureMatcher = Regex("\n\n<ds>(.*)</ds>", RegexOption.MULTILINE)
-        val signaturematches = signatureMatcher.find(message) ?: return
+        val signatureMatcher = Regex("<ds>(.*)</ds>", RegexOption.MULTILINE)
+        val signaturematches = signatureMatcher.find(message)
+        if (signaturematches == null) {
+            AlertDialog.Builder(this.requireView().context).setTitle("Digital Signature").
+            setMessage("Digital Signature NOT Verified.").
+            setPositiveButton("Proceed Carefully", DialogInterface.OnClickListener { _, _ ->  }).create().show()
+            return
+        }
         val signature = signaturematches!!.groupValues[1]
 
         val rawmessage = signature.replace("\n\n<ds>$signature</ds>","")
