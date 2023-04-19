@@ -238,6 +238,8 @@ Please submit bug reports, contribute new features and ask questions at
     <string name="message_to_fmt">To:<xliff:g id="counterParty">%s</xliff:g></string>
 
     <string name="message_compose_subject_hint">Subject</string>
+    <string name="message_compose_custom_digital_sign_hint">Digital Sign</string>
+    <string name="message_compose_custom_encryption_hint">Encryption</string>
     <string name="message_compose_content_hint">Message text</string>
     <string name="message_compose_signature_hint">Signature</string>
     <string name="message_compose_quote_header_separator">-------- Original Message --------</string>

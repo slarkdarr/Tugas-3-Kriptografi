@@ -180,6 +180,8 @@ Kirimkan laporan bug, kontribusikan fitur baru dan ajukan pertanyaan di
   <string name="message_list_load_more_messages_action">Muat lebih banyak pesan</string>
   <string name="message_to_fmt">Kepada:<xliff:g id="counterParty">%s</xliff:g></string>
   <string name="message_compose_subject_hint">Subyek</string>
+  <string name="message_compose_custom_digital_sign_hint">Tanda Tangan Digital</string>
+  <string name="message_compose_custom_encryption_hint">Enkripsi</string>
   <string name="message_compose_content_hint">Teks pesan</string>
   <string name="message_compose_signature_hint">Tanda tangan</string>
   <string name="message_compose_quote_header_separator">-------- Pesan Orisinal --------</string>

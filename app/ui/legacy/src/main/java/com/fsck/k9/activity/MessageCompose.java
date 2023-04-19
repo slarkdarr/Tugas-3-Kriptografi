@@ -28,6 +28,8 @@ import android.os.Parcelable;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.ActionBar;
+
+import android.text.InputType;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.TypedValue;
@@ -133,6 +135,8 @@ public class MessageCompose extends K9Activity implements OnClickListener,
     private static final int DIALOG_CONFIRM_DISCARD_ON_BACK = 2;
     private static final int DIALOG_CHOOSE_IDENTITY = 3;
     private static final int DIALOG_CONFIRM_DISCARD = 4;
+    private static final int DIALOG_DIGITAL_SIGN = 5;
+    private static final int DIALOG_ENCRYPTION = 6;
 
     public static final String ACTION_COMPOSE = "com.fsck.k9.intent.action.COMPOSE";
     public static final String ACTION_REPLY = "com.fsck.k9.intent.action.REPLY";
@@ -240,6 +244,11 @@ public class MessageCompose extends K9Activity implements OnClickListener,
 
     private boolean isInSubActivity = false;
 
+    private boolean digitalSignFlag = false;
+    private boolean encryptionFlag = false;
+    private String encryptionKey = "";
+    private String digitalSignKey = "";
+
     private boolean navigateUp;
 
     private boolean sendMessageHasBeenTriggered = false;
@@ -328,6 +337,27 @@ public class MessageCompose extends K9Activity implements OnClickListener,
 
         subjectView = findViewById(R.id.subject);
         subjectView.getInputExtras(true).putBoolean("allowEmoji", true);
+
+        findViewById(R.id.digital_sign_button).setOnClickListener(view -> {
+            removeDialog(DIALOG_DIGITAL_SIGN);
+            showDialog(DIALOG_DIGITAL_SIGN);
+        });
+        findViewById(R.id.encryption_button).setOnClickListener(view -> {
+            removeDialog(DIALOG_ENCRYPTION);
+            showDialog(DIALOG_ENCRYPTION);
+        });
+//        digitalSignKeyView = findViewById(R.id.c_ds);
+//        encryptionKeyView = findViewById(R.id.c_encryption);
+//        findViewById(R.id.layout_encryption).setOnClickListener(new OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                showDialog(DIALOG_CONFIRM_DISCARD);
+//            }
+//        });
+//        findViewById(R.id.layout_digitalsign).setVisibility(View.INVISIBLE);
+//        findViewById(R.id.line_digitalsign).setVisibility(View.INVISIBLE);
+//        findViewById(R.id.layout_encryption).setVisibility(View.INVISIBLE);
+//        findViewById(R.id.line_encryption).setVisibility(View.INVISIBLE);
 
         EditText upperSignature = findViewById(R.id.upper_signature);
         EditText lowerSignature = findViewById(R.id.lower_signature);
@@ -714,6 +744,14 @@ public class MessageCompose extends K9Activity implements OnClickListener,
             builder = SimpleMessageBuilder.newInstance();
             recipientPresenter.builderSetProperties(builder);
         }
+        String msg = CrLfConverter.toCrLf(messageContentView.getText());
+        if (this.digitalSignFlag && !digitalSignKey.isBlank() && !digitalSignKey.isEmpty()) {
+            // TODO Digital Sign
+        }
+
+        if (this.encryptionFlag && !encryptionKey.isBlank() && !encryptionKey.isEmpty()) {
+            // TODO encryption
+        }
 
         builder.setSubject(Utility.stripNewLines(subjectView.getText().toString()))
                 .setSentDate(new Date())
@@ -724,7 +762,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                 .setIdentity(identity)
                 .setReplyTo(replyToPresenter.getAddresses())
                 .setMessageFormat(currentMessageFormat)
-                .setText(CrLfConverter.toCrLf(messageContentView.getText()))
+                .setText(msg)
                 .setAttachments(attachmentPresenter.getAttachments())
                 .setInlineAttachments(attachmentPresenter.getInlineAttachments())
                 .setSignature(CrLfConverter.toCrLf(signatureView.getText()))
@@ -1226,8 +1264,110 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                                 })
                         .create();
             }
+            case DIALOG_ENCRYPTION: {
+                Builder d = new Builder(this).setTitle("Encryption Feature");
+                if (this.encryptionFlag) {
+                    return d.setMessage("Message will be sent with encryption.")
+                        .setPositiveButton("Turn Off",
+                            new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int which) {
+                                    changeEncryptionFlag(false);
+                                    Toast toast = Toast.makeText(getApplicationContext(), "Message will be sent as a plain text.",
+                                        Toast.LENGTH_LONG);
+                                    toast.show();
+                                }
+                            })
+                        .create();
+                } else {
+                    final EditText input = new EditText(this);
+                    input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+                    input.setHint("Key");
+                    d.setView(input);
+                    return d.setMessage("Message will be sent as a plain text.")
+                        .setPositiveButton("Turn On",
+                            new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int which) {
+                                    String key = input.getText().toString().trim();
+                                    if (key.isEmpty() || key.isBlank() || key.length() < 4) {
+                                        Toast toast = Toast.makeText(getApplicationContext(), "Encryption key is not valid, min 4 characters.",
+                                            Toast.LENGTH_LONG);
+                                        toast.show();
+                                        return;
+                                    }
+                                    changeEncryptionFlag(true, key);
+                                    Toast toast = Toast.makeText(getApplicationContext(), "Message will be sent with encryption.",
+                                        Toast.LENGTH_LONG);
+                                    toast.show();
+                                }
+                            }).create();
+                }
+            }
+            case DIALOG_DIGITAL_SIGN: {
+                Builder d = new Builder(this).setTitle("Digital Signature Feature");
+                if (this.digitalSignFlag) {
+                    return d.setMessage("Turn off digital sign?")
+                        .setNegativeButton("No", (dialogInterface, which) -> {
+
+                        })
+                        .setPositiveButton("Yes",
+                            (dialog, which) -> {
+                                changeDigitalSignFlag(false);
+                                Toast toast = Toast.makeText(getApplicationContext(), "Digital sign removed.",
+                                    Toast.LENGTH_LONG);
+                                toast.show();
+                            })
+                        .create();
+                } else {
+                    final EditText input = new EditText(this);
+                    input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+                    input.setHint("Private Key");
+                    d.setView(input);
+                    return d.setMessage("Add digital sign?")
+                        .setNegativeButton("No", (dialogInterface, which) -> {
+
+                        })
+                        .setPositiveButton("Yes",
+                            (dialog, which) -> {
+                                String key = input.getText().toString().trim();
+                                if (key.isEmpty() || key.isBlank() || key.length() < 4) {
+                                    Toast toast = Toast.makeText(getApplicationContext(), "Private key is not valid.",
+                                        Toast.LENGTH_LONG);
+                                    toast.show();
+                                    return;
+                                }
+                                changeDigitalSignFlag(true, key);
+                                Toast toast = Toast.makeText(getApplicationContext(), "Digital sign added.",
+                                    Toast.LENGTH_LONG);
+                                toast.show();
+                            }).create();
+                }
+            }
         }
         return super.onCreateDialog(id);
+    }
+
+    public void changeEncryptionFlag(boolean into) {
+        encryptionFlag = into;
+        if (!encryptionFlag) {
+            this.encryptionKey = "";
+        }
+    }
+
+    public void changeEncryptionFlag(boolean into, String key) {
+        encryptionKey = key;
+        changeEncryptionFlag(into);
+    }
+
+    public void changeDigitalSignFlag(boolean into) {
+       digitalSignFlag = into;
+        if (!digitalSignFlag) {
+            this.digitalSignKey = "";
+        }
+    }
+
+    public void changeDigitalSignFlag(boolean into, String key) {
+        this.digitalSignKey = key;
+        changeDigitalSignFlag(into);
     }
 
     public void saveDraftEventually() {
