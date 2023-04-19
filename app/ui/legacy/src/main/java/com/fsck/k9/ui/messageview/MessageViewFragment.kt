@@ -59,6 +59,7 @@ import com.fsck.k9.view.MessageWebView
 import java.io.ByteArrayOutputStream
 import java.io.OutputStream
 import java.util.Locale
+import java.util.regex.Pattern
 import org.koin.android.ext.android.inject
 import timber.log.Timber
 
@@ -510,15 +511,15 @@ class MessageViewFragment :
         val originalMessage = matches!!.groupValues[1]
         val message = Html.fromHtml(originalMessage).toString()
 
-        val signatureMatcher = Regex("<ds>(.*)</ds>", RegexOption.MULTILINE)
-        val signaturematches = signatureMatcher.find(message)
-        if (signaturematches == null) {
+        val signaturePattern = Pattern.compile("<ds>(.*)</ds>")
+        val signatureMatcher = signaturePattern.matcher(message)
+        if (!signatureMatcher.find()) {
             AlertDialog.Builder(this.requireView().context).setTitle("Digital Signature").
             setMessage("Digital Signature NOT found. (2)").
             setPositiveButton("Proceed Carefully", DialogInterface.OnClickListener { _, _ ->  }).create().show()
             return
         }
-        val signature = signaturematches!!.groupValues[1]
+        val signature = signatureMatcher.group(1)!!.trim()
 
         val rawmessage = signature.replace("\n\n<ds>$signature</ds>","")
         messageWebView.setHtmlContent(rawmessage)
