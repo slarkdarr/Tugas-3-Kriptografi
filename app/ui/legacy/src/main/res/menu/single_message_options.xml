@@ -18,4 +18,10 @@
     <item
         android:id="@+id/share"
         android:title="@string/send_alternate_action"/>
+    <item
+        android:id="@+id/verify_ds"
+        android:title="Verify Digital Sign"/>
+    <item
+        android:id="@+id/decrypt"
+        android:title="Decrypt"/>
 </menu>

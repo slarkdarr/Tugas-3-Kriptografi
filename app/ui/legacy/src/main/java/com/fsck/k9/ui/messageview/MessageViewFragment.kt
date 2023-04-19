@@ -1,14 +1,17 @@
 package com.fsck.k9.ui.messageview
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.IntentSender
 import android.content.IntentSender.SendIntentException
 import android.os.Bundle
 import android.os.Parcelable
 import android.os.SystemClock
+import android.text.Html
 import android.view.ContextThemeWrapper
 import android.view.LayoutInflater
 import android.view.Menu
@@ -52,6 +55,9 @@ import com.fsck.k9.ui.messageview.MessageCryptoPresenter.MessageCryptoMvpView
 import com.fsck.k9.ui.settings.account.AccountSettingsActivity
 import com.fsck.k9.ui.share.ShareIntentBuilder
 import com.fsck.k9.ui.withArguments
+import com.fsck.k9.view.MessageWebView
+import java.io.ByteArrayOutputStream
+import java.io.OutputStream
 import java.util.Locale
 import org.koin.android.ext.android.inject
 import timber.log.Timber
@@ -308,6 +314,8 @@ class MessageViewFragment :
             R.id.reply -> onReply()
             R.id.reply_all -> onReplyAll()
             R.id.forward -> onForward()
+            R.id.verify_ds -> onVerifyDS()
+            R.id.decrypt -> onDecrypt()
             R.id.forward_as_attachment -> onForwardAsAttachment()
             R.id.edit_as_new_message -> onEditAsNewMessage()
             R.id.share -> onSendAlternate()
@@ -396,6 +404,8 @@ class MessageViewFragment :
                 R.id.reply -> onReply()
                 R.id.reply_all -> onReplyAll()
                 R.id.forward -> onForward()
+                R.id.verify_ds -> onVerifyDS()
+                R.id.decrypt -> onDecrypt()
                 R.id.forward_as_attachment -> onForwardAsAttachment()
                 R.id.edit_as_new_message -> onEditAsNewMessage()
                 R.id.share -> onSendAlternate()
@@ -485,6 +495,53 @@ class MessageViewFragment :
             messageReference = message.makeMessageReference(),
             decryptionResultForReply = messageCryptoPresenter.decryptionResultForReply,
         )
+    }
+
+    fun onVerifyDS() {
+        val messageWebView = this.requireView().findViewById<MessageWebView>(R.id.message_content)
+        val contentMatcher = Regex("<body><div dir=\"auto\">(.*)</div></body>", RegexOption.MULTILINE)
+        val matches = contentMatcher.find(messageWebView.currentHtmlContent)
+        if (matches == null) {
+            AlertDialog.Builder(this.requireView().context).setTitle("Digital Signature").
+            setMessage("Digital Signature NOT Verified.").
+            setPositiveButton("Proceed Carefully", DialogInterface.OnClickListener { _, _ ->  }).create().show()
+            return
+        }
+        val originalMessage = matches!!.groupValues[1]
+        val message = Html.fromHtml(originalMessage).toString()
+
+        val signatureMatcher = Regex("\n\n<ds>(.*)</ds>", RegexOption.MULTILINE)
+        val signaturematches = signatureMatcher.find(message) ?: return
+        val signature = signaturematches!!.groupValues[1]
+
+        val rawmessage = signature.replace("\n\n<ds>$signature</ds>","")
+        messageWebView.setHtmlContent(rawmessage)
+
+        val valid = false;
+        // TODO validasi signature
+        if (valid) {
+            AlertDialog.Builder(this.requireView().context).setTitle("Digital Signature").
+            setMessage("Digital Signature Verified.").
+            setPositiveButton("OK", DialogInterface.OnClickListener { _, _ ->  }).create().show()
+        } else {
+            AlertDialog.Builder(this.requireView().context).setTitle("Digital Signature").
+            setMessage("Digital Signature NOT Verified.").
+            setPositiveButton("Proceed Carefully", DialogInterface.OnClickListener { _, _ ->  }).create().show()
+        }
+        Timber.tag("RAVIEL").i(rawmessage)
+        Timber.tag("RAVIEL").i(signature)
+    }
+
+    fun onDecrypt() {
+        val messageWebView = this.requireView().findViewById<MessageWebView>(R.id.message_content)
+        val contentMatcher = Regex("<body><div dir=\"auto\">(.*)</div></body>", RegexOption.MULTILINE)
+        val matches = contentMatcher.find(messageWebView.currentHtmlContent) ?: return
+        val originalMessage = matches!!.groupValues[1]
+        var originalmessage = Html.fromHtml(originalMessage).toString()
+        var newmessage = "addddddddddd"
+        // TODO decrypt message
+        val finalmessage = messageWebView.currentHtmlContent.replace(originalmessage, newmessage)
+        messageWebView.setHtmlContent(finalmessage)
     }
 
     private fun onForwardAsAttachment() {
